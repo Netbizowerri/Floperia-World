@@ -250,7 +250,10 @@ export default function Events() {
               <div className="p-10 space-y-4">
                 <h3 className="text-2xl font-bold text-brand-plum uppercase tracking-tight">{service.title}</h3>
                 <p className="text-brand-gray font-medium leading-relaxed">{service.desc}</p>
-                <button className="flex items-center gap-2 text-brand-gold font-bold uppercase tracking-widest text-xs pt-4 group-hover:gap-4 transition-all">
+                <button 
+                  onClick={() => setIsBooking(true)}
+                  className="flex items-center gap-2 text-brand-gold font-bold uppercase tracking-widest text-xs pt-4 group-hover:gap-4 transition-all"
+                >
                   Learn More <ArrowRight size={16} />
                 </button>
               </div>

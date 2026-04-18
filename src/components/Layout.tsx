@@ -58,7 +58,7 @@ export default function Layout() {
               </button>
             )}
             {!title ? (
-              <span className="font-display text-xl font-bold text-brand-plum tracking-tight uppercase">FLOPERIA</span>
+              <button onClick={() => navigate('/')} className="font-display text-xl font-bold text-brand-plum tracking-tight uppercase hover:opacity-80 transition-opacity">FLOPERIA</button>
             ) : (
               <span className="font-display text-xl font-bold text-brand-plum tracking-tight">{title}</span>
             )}
