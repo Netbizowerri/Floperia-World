@@ -383,7 +383,7 @@ export default function Home() {
             </Link>
           </div>
           <img
-            src="https://picsum.photos/seed/founder/800/1200"
+            src="https://i.ibb.co/q3pKtnNG/Gemini-Generated-Image-grwyogrwyogrwyog-1.png"
             alt="Iniobong Donatus"
             className="absolute right-0 top-0 bottom-0 w-full md:w-[40%] h-full object-cover opacity-20 md:opacity-80 mix-blend-luminosity"
             referrerPolicy="no-referrer"
