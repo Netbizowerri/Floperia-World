@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-brand-plum: #4A0E3C;
+  --color-brand-gold: #D4A017;
+  --color-brand-blush: #F2C4CE;
+  --color-brand-off-white: #FAF8F5;
+  --color-brand-charcoal: #1A1A2E;
+  --color-brand-gray: #8C8C8C;
+
+  --font-display: "Poppins", sans-serif;
+  --font-sans: "Poppins", sans-serif;
+  --font-accent: "Poppins", sans-serif;
+
+  --shadow-card-rest: 0 2px 12px rgba(74, 14, 60, 0.08);
+  --shadow-card-hover: 0 8px 32px rgba(74, 14, 60, 0.18);
+  --shadow-bottom-nav: 0 -2px 20px rgba(0, 0, 0, 0.12);
+  --shadow-floating-button: 0 6px 24px rgba(212, 160, 23, 0.40);
+  --shadow-sticky-bar: 0 -2px 16px rgba(74, 14, 60, 0.12);
+
+  --radius-button: 9999px;
+  --radius-card: 16px;
+  --radius-image: 12px;
+  --radius-input: 12px;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-off-white text-brand-charcoal font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .translate-z-10 {
+    transform: translateZ(10px);
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-plum text-white px-8 py-4 rounded-button font-semibold transition-all active:scale-95 disabled:opacity-50;
+  }
+
+  .btn-gold {
+    @apply bg-brand-gold text-brand-charcoal px-8 py-4 rounded-button font-bold shadow-floating-button transition-all active:scale-95 disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply border-2 border-brand-plum text-brand-plum px-8 py-4 rounded-button font-semibold transition-all active:scale-95;
+  }
+}

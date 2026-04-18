@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: products
+    // Fields: name (str), slug (str), category (str), price (num), images (list of base64), stockStatus (str), stockCount (num), isFeatured (bool), isNew (bool)
+    //
+    // Collection: categories
+    // Fields: label (str), icon (str), color (str), subcategories (list)
+    //
+    // Collection: orders
+    // Fields: userId (str), items (list), totalAmount (num), status (str), paymentStatus (str), receiptImage (base64)
+    //
+    // Collection: users
+    // Fields: email (str), displayName (str), role (str), cart (list)
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "netbiz0925@gmail.com" || 
+         request.auth.token.email == "service.floperia@gmail.com" ||
+         request.auth.uid == "zf1qdx5SvgZ2Weg7bnbhDdngzvh2");
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (isSuperAdmin() || 
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Validation Functions
+    function isValidProduct(data) {
+      return data.name is string && data.name.size() < 200 &&
+             data.price is number && data.price >= 0 &&
+             data.category is string &&
+             data.images is list && data.images.size() <= 5;
+    }
+
+    function isValidOrder(data) {
+      return data.userId == request.auth.uid &&
+             data.totalAmount is number && data.totalAmount > 0 &&
+             data.status in ['order_placed', 'payment_confirmed', 'processing', 'quality_check', 'shipped', 'delivered', 'cancelled', 'pending'];
+    }
+
+    // Rules
+    match /products/{productId} {
+      allow read: if true; // Publicly readable for shop display
+      allow write: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isSuperAdmin();
+      allow read: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow create: if isAuthenticated() && isValidOrder(request.resource.data);
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow update: if isAdmin();
+    }
+
+    match /carts/{userId} {
+      allow read, write: if isOwner(userId) || isSuperAdmin();
+    }
+
+    match /wishlists/{userId} {
+      allow read, write: if isOwner(userId) || isSuperAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow create: if true; // Allow anyone to submit a form (triggers a notification)
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}
