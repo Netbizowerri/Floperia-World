@@ -53,7 +53,7 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
           >
             {/* Header */}
             <div className="p-6 border-b border-brand-gray/10 flex items-center justify-between bg-brand-off-white text-brand-plum">
-              <img src="https://i.ibb.co/vxHHjNDW/Floperia-Classic-World-1.png" alt="Floperia Classic World" className="h-8 object-contain" />
+              <img src="https://i.ibb.co/vxHHjNDW/Floperia-Classic-World-1.png" alt="Floperia Classic World" className="h-10 object-contain" />
               <button onClick={onClose} className="p-2 hover:bg-brand-plum/10 rounded-full transition-colors">
                 <X size={24} />
               </button>

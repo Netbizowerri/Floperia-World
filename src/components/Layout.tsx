@@ -59,7 +59,7 @@ export default function Layout() {
             )}
             {!title ? (
               <button onClick={() => navigate('/')} className="hover:opacity-80 transition-opacity flex items-center">
-                <img src="https://i.ibb.co/vxHHjNDW/Floperia-Classic-World-1.png" alt="Floperia Classic World" className="h-10 object-contain" />
+                <img src="https://i.ibb.co/vxHHjNDW/Floperia-Classic-World-1.png" alt="Floperia Classic World" className="h-12 object-contain" />
               </button>
             ) : (
               <span className="font-display text-xl font-bold text-brand-plum tracking-tight">{title}</span>
