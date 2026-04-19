@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { auth, signInWithGoogle } from '../firebase';
+import { auth } from '../firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Mail, Lock, LogIn, UserPlus, Info } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -36,14 +36,7 @@ const Login = () => {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await signInWithGoogle();
-      navigate(from, { replace: true });
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
+
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
@@ -104,30 +97,7 @@ const Login = () => {
           </div>
         </form>
 
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with</span>
-            </div>
-          </div>
 
-          <div className="mt-6">
-            <button
-              onClick={handleGoogleSignIn}
-              className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-plum transition-all"
-            >
-              <img 
-                className="h-5 w-5 mr-2" 
-                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
-                alt="Google" 
-              />
-              Google
-            </button>
-          </div>
-        </div>
 
         <div className="text-center mt-4">
           <button

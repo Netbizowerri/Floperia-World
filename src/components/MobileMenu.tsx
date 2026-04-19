@@ -5,8 +5,6 @@ import { CATEGORIES } from '../data/mock';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useUserStore } from '../store/useUserStore';
-import { checkIsAdmin } from '../firebase';
-import { LayoutDashboard } from 'lucide-react';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -17,7 +15,6 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const [showCategories, setShowCategories] = useState(false);
   const navigate = useNavigate();
   const { user } = useUserStore();
-  const isAdmin = checkIsAdmin(user);
 
   const handleCategoryClick = (categoryId: string) => {
     navigate(`/shop?category=${categoryId}`);
@@ -32,10 +29,6 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
     { label: 'My Orders', icon: Package, path: '/orders' },
     { label: 'About Us', icon: Info, path: '/about' },
   ];
-
-  if (isAdmin) {
-    menuItems.push({ label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' });
-  }
 
   return (
     <AnimatePresence>
