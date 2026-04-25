@@ -30,6 +30,8 @@ const Events = React.lazy(() => import('./pages/Events'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Contact = React.lazy(() => import('./pages/Contact'));
+const Gallery = React.lazy(() => import('./pages/Gallery'));
+const VideoGallery = React.lazy(() => import('./pages/VideoGallery'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 export default function App() {
@@ -70,25 +72,27 @@ export default function App() {
           <div className="w-12 h-12 border-4 border-brand-plum border-t-brand-gold rounded-full animate-spin" />
         </div>
       }>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route path="shop" element={<Shop />} />
-            <Route path="product/:id" element={<ProductDetail />} />
-            <Route path="cart" element={<Cart />} />
-            <Route path="login" element={<Login />} />
-            <Route path="checkout" element={<Checkout />} />
-            <Route path="orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-            <Route path="orders/:id/track" element={<ProtectedRoute><OrderTracking /></ProtectedRoute>} />
-            <Route path="about" element={<About />} />
-            <Route path="wishlist" element={<Wishlist />} />
-            <Route path="training" element={<Training />} />
-            <Route path="events" element={<Events />} />
-            <Route path="contact" element={<Contact />} />
-            <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
+         <Routes>
+           <Route path="/" element={<Layout />}>
+             <Route index element={<Home />} />
+             <Route path="shop" element={<Shop />} />
+             <Route path="product/:id" element={<ProductDetail />} />
+             <Route path="cart" element={<Cart />} />
+             <Route path="login" element={<Login />} />
+             <Route path="checkout" element={<Checkout />} />
+             <Route path="orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+             <Route path="orders/:id/track" element={<ProtectedRoute><OrderTracking /></ProtectedRoute>} />
+             <Route path="about" element={<About />} />
+             <Route path="wishlist" element={<Wishlist />} />
+             <Route path="training" element={<Training />} />
+             <Route path="events" element={<Events />} />
+             <Route path="contact" element={<Contact />} />
+             <Route path="gallery" element={<Gallery />} />
+             <Route path="videogallery" element={<VideoGallery />} />
+             <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+             <Route path="*" element={<NotFound />} />
+           </Route>
+         </Routes>
       </React.Suspense>
     </BrowserRouter>
   );

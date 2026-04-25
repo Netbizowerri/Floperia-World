@@ -1,4 +1,4 @@
-export type CategoryId = 'bridal' | 'groom' | 'asoebi' | 'ankara-craft' | 'training' | 'events';
+export type CategoryId = 'bridal' | 'groom' | 'asoebi' | 'ankara-craft' | 'training' | 'events' | 'hats';
 
 export interface Category {
   id: CategoryId;

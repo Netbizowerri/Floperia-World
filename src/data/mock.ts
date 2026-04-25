@@ -32,6 +32,14 @@ export const CATEGORIES: Category[] = [
     color: '#E8F8F5',
     bgImage: 'https://i.ibb.co/kV83XDd5/Floperia-1.jpg',
     subcategories: ['Headpiece', 'Jewelries', 'Slippers', 'Pillows', 'Note Pad', 'Wall Decor Design', 'DIY']
+  },
+  {
+    id: 'hats',
+    label: 'Hats',
+    icon: 'Hat',
+    color: '#FCE4EC',
+    bgImage: 'https://i.ibb.co/TD7srzYY/Big-brim-hat-30k.jpg',
+    subcategories: ['Big Brim', 'Fedora', 'Beret', 'Fascinator']
   }
 ];
 
@@ -402,6 +410,34 @@ export const PRODUCTS: Product[] = [
     rating: 5.0,
     reviewCount: 3,
     isFeatured: true,
+    isNew: true
+  },
+  {
+    id: '127',
+    slug: 'big-brim-hat-30k',
+    name: 'Big Brim Hat',
+    category: 'hats',
+    subcategory: 'Big Brim',
+    price: 30000,
+    images: ['https://i.ibb.co/TD7srzYY/Big-brim-hat-30k.jpg'],
+    description: 'Elegant big brim hat, perfect for stylish occasions.',
+    stockStatus: 'in_stock',
+    rating: 4.8,
+    reviewCount: 2,
+    isNew: true
+  },
+  {
+    id: '128',
+    slug: 'big-brim-hat-24k',
+    name: 'Big Brim Hat',
+    category: 'hats',
+    subcategory: 'Big Brim',
+    price: 24000,
+    images: ['https://i.ibb.co/zps7frs/Big-brim-hat-24k.jpg'],
+    description: 'Classic big brim hat for a sophisticated look.',
+    stockStatus: 'in_stock',
+    rating: 4.7,
+    reviewCount: 3,
     isNew: true
   }
 ];

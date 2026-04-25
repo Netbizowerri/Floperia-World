@@ -59,13 +59,15 @@ export default function Footer() {
         {/* Quick Links */}
         <div className="space-y-6">
           <h3 className="text-lg font-bold text-brand-gold uppercase tracking-widest">Quick Links</h3>
-          <ul className="space-y-4">
-            <li><Link to="/shop" className="text-white/70 hover:text-brand-gold transition-colors flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" /> Shop All</Link></li>
-            <li><Link to="/about" className="text-white/70 hover:text-brand-gold transition-colors flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" /> Our Story</Link></li>
-            <li><Link to="/training" className="text-white/70 hover:text-brand-gold transition-colors flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" /> Training</Link></li>
-            <li><Link to="/events" className="text-white/70 hover:text-brand-gold transition-colors flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" /> Events</Link></li>
-            <li><Link to="/contact" className="text-white/70 hover:text-brand-gold transition-colors flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" /> Contact Us</Link></li>
-          </ul>
+        <ul className="space-y-4">
+          <li><Link to="/shop" className="text-white/70 hover:text-brand-gold transition-colors flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" /> Shop All</Link></li>
+          <li><Link to="/gallery" className="text-white/70 hover:text-brand-gold transition-colors flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" /> Gallery</Link></li>
+          <li><Link to="/videogallery" className="text-white/70 hover:text-brand-gold transition-colors flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" /> Video Gallery</Link></li>
+          <li><Link to="/about" className="text-white/70 hover:text-brand-gold transition-colors flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" /> Our Story</Link></li>
+          <li><Link to="/training" className="text-white/70 hover:text-brand-gold transition-colors flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" /> Training</Link></li>
+          <li><Link to="/events" className="text-white/70 hover:text-brand-gold transition-colors flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" /> Events</Link></li>
+          <li><Link to="/contact" className="text-white/70 hover:text-brand-gold transition-colors flex items-center gap-2 group"><ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" /> Contact Us</Link></li>
+        </ul>
         </div>
 
         {/* Contact Info */}

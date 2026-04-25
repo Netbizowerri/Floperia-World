@@ -26,6 +26,8 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const menuItems = [
     { label: 'Home', icon: Home, path: '/' },
     { label: 'Shop', icon: ShoppingBag, onClick: () => setShowCategories(true) },
+    { label: 'Gallery', icon: Package, path: '/gallery' },
+    { label: 'Video Gallery', icon: Package, path: '/videogallery' },
     { label: 'My Orders', icon: Package, path: '/orders' },
     { label: 'About Us', icon: Info, path: '/about' },
   ];
