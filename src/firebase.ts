@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, doc, setDoc, getDoc, getDocs, query, where, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth';
 import { CATEGORIES, PRODUCTS } from './data/mock';
 import { Product } from './types';
 
@@ -14,6 +14,8 @@ export const db = (!firebaseConfig.firestoreDatabaseId || firebaseConfig.firesto
   : getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+export const ADMIN_EMAILS = ['netbiz0925@gmail.com', 'service.floperia@gmail.com'];
+export const ADMIN_UIDS = ['zf1qdx5SvgZ2Weg7bnbhDdngzvh2'];
 
 export const fetchProducts = async () => {
   const querySnapshot = await getDocs(collection(db, 'products'));
@@ -129,9 +131,15 @@ export const getStats = async () => {
   };
 };
 
-export const checkIsAdmin = (user: any) => {
+export const checkIsAdmin = (user: User | null) => {
   if (!user) return false;
-  const adminEmails = ['netbiz0925@gmail.com', 'service.floperia@gmail.com'];
-  const adminUids = ['zf1qdx5SvgZ2Weg7bnbhDdngzvh2'];
-  return adminEmails.includes(user.email) || adminUids.includes(user.uid);
+  return ADMIN_EMAILS.includes(user.email ?? '') || ADMIN_UIDS.includes(user.uid);
+};
+
+export const resolveAdminStatus = async (user: User | null) => {
+  if (!user) return false;
+  if (checkIsAdmin(user)) return true;
+
+  const userDoc = await getDoc(doc(db, 'users', user.uid));
+  return userDoc.exists() && userDoc.data().role === 'admin';
 };

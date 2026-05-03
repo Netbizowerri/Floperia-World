@@ -1,36 +1,74 @@
 import React, { useState } from 'react';
 import { useUserStore } from '../store/useUserStore';
-import { checkIsAdmin, auth, migrateData, getStats, fetchProducts, deleteProduct, addProduct } from '../firebase';
+import { ADMIN_EMAILS, ADMIN_UIDS, auth, migrateData, getStats, fetchProducts, deleteProduct, addProduct, updateProduct } from '../firebase';
 import { Navigate, Link } from 'react-router-dom';
-import { 
-  Users, 
-  ShoppingBag, 
-  Package, 
-  Settings, 
+import {
+  Users,
+  ShoppingBag,
+  Package,
+  Settings,
   BarChart3,
   ArrowRight,
   Database,
   Plus,
   Trash2,
+  Pencil,
   RefreshCw,
   Search,
   Bell,
   CheckCircle,
   Calendar,
-  User,
   MessageSquare
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatPrice } from '../lib/utils';
 import { AdminNotification, subscribeToNotifications, markAsRead } from '../services/notificationService';
+import { Product } from '../types';
+
+type ProductFormState = {
+  name: string;
+  category: Product['category'];
+  subcategory: string;
+  price: number;
+  description: string;
+  images: string[];
+  videoUrl: string;
+  stockCount: number;
+};
+
+const createEmptyProductForm = (): ProductFormState => ({
+  name: '',
+  category: 'bridal',
+  subcategory: 'Headpiece',
+  price: 0,
+  description: '',
+  images: ['', '', ''],
+  videoUrl: '',
+  stockCount: 0,
+});
+
+const createProductFormFromProduct = (product: any): ProductFormState => ({
+  name: product.name ?? '',
+  category: product.category ?? 'bridal',
+  subcategory: product.subcategory ?? 'Headpiece',
+  price: Number(product.price ?? 0),
+  description: product.description ?? '',
+  images: Array.from({ length: Math.max(3, product.images?.length || 0) }, (_, index) => product.images?.[index] ?? ''),
+  videoUrl: product.videoUrl ?? '',
+  stockCount: Number(product.stockCount ?? 0),
+});
 
 export default function Dashboard() {
-  const { user, loading } = useUserStore();
-  const isAdmin = checkIsAdmin(user);
+  const { user, loading, isAdmin } = useUserStore();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'notifications'>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [notifications, setNotifications] = React.useState<AdminNotification[]>([]);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'confirming' | 'syncing' | 'success' | 'error'>('idle');
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [productForm, setProductForm] = useState<ProductFormState>(createEmptyProductForm);
 
   React.useEffect(() => {
     if (user && isAdmin) {
@@ -38,19 +76,119 @@ export default function Dashboard() {
     }
   }, [user, isAdmin]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: getStats,
-    enabled: !!user && isAdmin
+    enabled: !!user && isAdmin,
   });
 
-  const { data: products = [], isLoading: isLoadingProducts } = useQuery({
+  const { data: products = [] } = useQuery({
     queryKey: ['admin-products'],
     queryFn: fetchProducts,
-    enabled: !!user && isAdmin
+    enabled: !!user && isAdmin,
   });
+
+  const openAddProductModal = () => {
+    setEditingProductId(null);
+    setProductForm(createEmptyProductForm());
+    setIsProductModalOpen(true);
+  };
+
+  const openEditProductModal = (product: any) => {
+    setEditingProductId(product.id);
+    setProductForm(createProductFormFromProduct(product));
+    setIsProductModalOpen(true);
+  };
+
+  const closeProductModal = () => {
+    setIsProductModalOpen(false);
+    setEditingProductId(null);
+    setProductForm(createEmptyProductForm());
+  };
+
+  const handleMigrate = async () => {
+    setSyncStatus('syncing');
+    try {
+      await migrateData();
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      setSyncStatus('success');
+      setTimeout(() => setSyncStatus('idle'), 3000);
+    } catch (error) {
+      console.error('Migration failed:', error);
+      setSyncStatus('error');
+    }
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const filteredImages = productForm.images.filter((img) => img.trim() !== '');
+      if (filteredImages.length === 0) {
+        alert('Please add at least one image URL.');
+        return;
+      }
+
+      const payload = {
+        ...productForm,
+        images: filteredImages,
+        videoUrl: productForm.videoUrl.trim(),
+        slug: productForm.name.toLowerCase().trim().replace(/\s+/g, '-'),
+        stockCount: Number(productForm.stockCount) || 0,
+      };
+
+      if (editingProductId) {
+        await updateProduct(editingProductId, payload);
+      } else {
+        await addProduct({
+          ...payload,
+          stockStatus: 'in_stock',
+          rating: 5.0,
+          reviewCount: 0,
+        } as any);
+      }
+
+      closeProductModal();
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      setSyncStatus('success');
+      setTimeout(() => setSyncStatus('idle'), 3000);
+    } catch (error) {
+      console.error('Save failed:', error);
+      setSyncStatus('error');
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    setDeletingId(id);
+  };
+
+  const confirmDelete = async (id: string) => {
+    try {
+      await deleteProduct(id);
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      setDeletingId(null);
+    } catch (error) {
+      console.error('Delete failed:', error);
+      setSyncStatus('error');
+    }
+  };
+
+  const filteredProducts = products.filter((p: any) =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const statCards = [
+    { label: 'Total Orders', value: stats?.orders || 0, icon: <ShoppingBag className="text-blue-600" />, change: 'Real-time' },
+    { label: 'Products', value: stats?.products || 0, icon: <Package className="text-purple-600" />, change: 'Live' },
+    { label: 'Categories', value: stats?.categories || 0, icon: <Settings className="text-green-600" />, change: 'Live' },
+    { label: 'Revenue', value: `N${(stats?.revenue || 0).toLocaleString()}`, icon: <BarChart3 className="text-orange-600" />, change: 'Total' },
+  ];
 
   if (loading) {
     return (
@@ -70,18 +208,18 @@ export default function Dashboard() {
         <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl text-center">
           <h2 className="text-2xl font-bold text-brand-plum mb-4">Access Denied</h2>
           <p className="text-gray-600 mb-6">You do not have permission to access the admin dashboard.</p>
-          
+
           <div className="bg-gray-50 p-4 rounded-xl text-left text-xs font-mono text-gray-500 mb-6 overflow-auto max-h-48">
             <p className="font-bold text-brand-plum mb-2">Debug Info:</p>
             <p>Email: {user.email}</p>
             <p>UID: {user.uid}</p>
             <p>Verified: {user.emailVerified ? 'Yes' : 'No'}</p>
-            <p>Allowed Emails: netbiz0925@gmail.com, service.floperia@gmail.com</p>
-            <p>Allowed UIDs: zf1qdx5SvgZ2Weg7bnbhDdngzvh2</p>
+            <p>Allowed Emails: {ADMIN_EMAILS.join(', ')}</p>
+            <p>Allowed UIDs: {ADMIN_UIDS.join(', ')}</p>
           </div>
 
           <Link to="/" className="btn-primary inline-block w-full mb-3">Return Home</Link>
-          <button 
+          <button
             onClick={() => auth.signOut()}
             className="text-sm text-brand-plum hover:underline"
           >
@@ -91,103 +229,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'confirming' | 'syncing' | 'success' | 'error'>('idle');
-
-  const handleMigrate = async () => {
-    setSyncStatus('syncing');
-    try {
-      await migrateData();
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      setSyncStatus('success');
-      setTimeout(() => setSyncStatus('idle'), 3000);
-    } catch (error) {
-      console.error('Migration failed:', error);
-      setSyncStatus('error');
-    }
-  };
-
-  const [isAdding, setIsAdding] = useState(false);
-  const [newProduct, setNewProduct] = useState({
-    name: '',
-    category: 'bridal',
-    subcategory: 'Headpiece',
-    price: 0,
-    description: '',
-    images: ['', '', ''],
-    videoUrl: ''
-  });
-
-  const handleAddProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      // Filter out empty image URLs
-      const filteredImages = newProduct.images.filter(img => img.trim() !== '');
-      if (filteredImages.length === 0) {
-        alert('Please add at least one image URL.');
-        return;
-      }
-      
-      await addProduct({
-        ...newProduct,
-        images: filteredImages,
-        stockStatus: 'in_stock',
-        rating: 5.0,
-        reviewCount: 0,
-        slug: newProduct.name.toLowerCase().replace(/ /g, '-'),
-      } as any);
-      
-      setIsAdding(false);
-      setNewProduct({
-        name: '',
-        category: 'bridal',
-        subcategory: 'Headpiece',
-        price: 0,
-        description: '',
-        images: ['', '', ''],
-        videoUrl: ''
-      });
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-      setSyncStatus('success');
-      setTimeout(() => setSyncStatus('idle'), 3000);
-    } catch (error) {
-      console.error('Add failed:', error);
-      setSyncStatus('error');
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    setDeletingId(id);
-  };
-
-  const confirmDelete = async (id: string) => {
-    try {
-      await deleteProduct(id);
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-      setDeletingId(null);
-    } catch (error) {
-      console.error('Delete failed:', error);
-      setSyncStatus('error');
-    }
-  };
-
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const filteredProducts = products.filter((p: any) => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const statCards = [
-    { label: 'Total Orders', value: stats?.orders || 0, icon: <ShoppingBag className="text-blue-600" />, change: 'Real-time' },
-    { label: 'Products', value: stats?.products || 0, icon: <Package className="text-purple-600" />, change: 'Live' },
-    { label: 'Categories', value: stats?.categories || 0, icon: <Settings className="text-green-600" />, change: 'Live' },
-    { label: 'Revenue', value: `₦${(stats?.revenue || 0).toLocaleString()}`, icon: <BarChart3 className="text-orange-600" />, change: 'Total' },
-  ];
 
   return (
     <div className="min-h-screen bg-brand-off-white p-4 md:p-10">
@@ -199,7 +240,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setSyncStatus('confirming')}
                 disabled={syncStatus === 'syncing'}
                 className="btn-primary flex items-center gap-2 text-sm"
@@ -212,13 +253,13 @@ export default function Dashboard() {
                 <div className="absolute top-full right-0 mt-2 w-64 bg-white p-4 rounded-2xl shadow-2xl border border-brand-plum/10 z-50">
                   <p className="text-xs font-bold text-brand-plum mb-3">Sync all mock products to live database?</p>
                   <div className="flex gap-2">
-                    <button 
+                    <button
                       onClick={() => setSyncStatus('idle')}
                       className="flex-1 py-2 text-xs font-bold text-brand-plum/40 hover:text-brand-plum"
                     >
                       Cancel
                     </button>
-                    <button 
+                    <button
                       onClick={handleMigrate}
                       className="flex-1 py-2 bg-brand-plum text-white rounded-lg text-xs font-bold"
                     >
@@ -231,13 +272,13 @@ export default function Dashboard() {
               {syncStatus === 'success' && (
                 <div className="absolute top-full right-0 mt-2 w-48 bg-green-500 text-white p-3 rounded-xl shadow-xl z-50 text-xs font-bold flex items-center gap-2">
                   <div className="w-2 h-2 bg-white rounded-full animate-ping" />
-                  Sync Successful!
+                  Changes saved!
                 </div>
               )}
 
               {syncStatus === 'error' && (
                 <div className="absolute top-full right-0 mt-2 w-48 bg-red-500 text-white p-3 rounded-xl shadow-xl z-50 text-xs font-bold">
-                  Sync Failed. Check console.
+                  Action failed. Check console.
                   <button onClick={() => setSyncStatus('idle')} className="block mt-1 underline">Dismiss</button>
                 </div>
               )}
@@ -248,30 +289,29 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Navigation Tabs */}
         <div className="flex gap-4 border-b border-brand-plum/10">
-          <button 
+          <button
             onClick={() => setActiveTab('overview')}
             className={`pb-4 px-2 font-bold text-sm transition-all relative ${activeTab === 'overview' ? 'text-brand-plum' : 'text-brand-plum/40'}`}
           >
             Overview
             {activeTab === 'overview' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand-plum rounded-full" />}
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('products')}
             className={`pb-4 px-2 font-bold text-sm transition-all relative ${activeTab === 'products' ? 'text-brand-plum' : 'text-brand-plum/40'}`}
           >
             Manage Products
             {activeTab === 'products' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand-plum rounded-full" />}
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('orders')}
             className={`pb-4 px-2 font-bold text-sm transition-all relative ${activeTab === 'orders' ? 'text-brand-plum' : 'text-brand-plum/40'}`}
           >
             Orders
             {activeTab === 'orders' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand-plum rounded-full" />}
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('notifications')}
             className={`pb-4 px-2 font-bold text-sm transition-all relative ${activeTab === 'notifications' ? 'text-brand-plum' : 'text-brand-plum/40'}`}
           >
@@ -287,7 +327,6 @@ export default function Dashboard() {
 
         {activeTab === 'overview' && (
           <div className="space-y-8">
-            {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {statCards.map((stat, i) => (
                 <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-brand-plum/5">
@@ -308,7 +347,6 @@ export default function Dashboard() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Recent Activity */}
               <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-brand-plum/5 p-8">
                 <h2 className="text-xl font-bold text-brand-plum mb-6">System Status</h2>
                 <div className="space-y-4">
@@ -329,12 +367,14 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Quick Actions */}
               <div className="bg-white p-8 rounded-3xl shadow-sm border border-brand-plum/5">
                 <h2 className="text-xl font-bold text-brand-plum mb-6">Quick Actions</h2>
                 <div className="space-y-3">
-                  <button 
-                    onClick={() => setActiveTab('products')}
+                  <button
+                    onClick={() => {
+                      setActiveTab('products');
+                      openAddProductModal();
+                    }}
                     className="w-full p-4 bg-brand-off-white hover:bg-brand-plum hover:text-white transition-all rounded-2xl text-left font-bold flex items-center justify-between group"
                   >
                     Add New Product
@@ -355,111 +395,130 @@ export default function Dashboard() {
             <div className="p-6 border-b border-brand-plum/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-plum/40" size={18} />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Search products..."
                   className="w-full pl-12 pr-4 py-3 bg-brand-off-white rounded-xl border-none focus:ring-2 focus:ring-brand-plum transition-all"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <button 
-                onClick={() => setIsAdding(true)}
+              <button
+                onClick={openAddProductModal}
                 className="btn-primary flex items-center gap-2"
               >
                 <Plus size={18} /> Add Product
               </button>
             </div>
 
-            {isAdding && (
+            {isProductModalOpen && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-plum/60 backdrop-blur-sm">
                 <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden">
                   <div className="p-8 border-b border-brand-plum/5 flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-brand-plum uppercase tracking-tight">Add New Product</h2>
-                    <button onClick={() => setIsAdding(false)} className="text-brand-plum/40 hover:text-brand-plum">✕</button>
+                    <h2 className="text-2xl font-bold text-brand-plum uppercase tracking-tight">
+                      {editingProductId ? 'Edit Product' : 'Add New Product'}
+                    </h2>
+                    <button onClick={closeProductModal} className="text-brand-plum/40 hover:text-brand-plum">x</button>
                   </div>
-                  <form onSubmit={handleAddProduct} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+                  <form onSubmit={handleSaveProduct} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-brand-plum/40 uppercase tracking-widest">Product Name</label>
-                        <input 
+                        <input
                           required
                           className="w-full p-4 bg-brand-off-white rounded-2xl border-none focus:ring-2 focus:ring-brand-plum"
-                          value={newProduct.name}
-                          onChange={e => setNewProduct({...newProduct, name: e.target.value})}
+                          value={productForm.name}
+                          onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-brand-plum/40 uppercase tracking-widest">Price (₦)</label>
-                        <input 
+                        <label className="text-xs font-bold text-brand-plum/40 uppercase tracking-widest">Price (N)</label>
+                        <input
                           required
                           type="number"
+                          min="0"
                           className="w-full p-4 bg-brand-off-white rounded-2xl border-none focus:ring-2 focus:ring-brand-plum"
-                          value={newProduct.price}
-                          onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})}
+                          value={productForm.price}
+                          onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
                         />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-brand-plum/40 uppercase tracking-widest">Category</label>
-                        <select 
+                        <select
                           className="w-full p-4 bg-brand-off-white rounded-2xl border-none focus:ring-2 focus:ring-brand-plum"
-                          value={newProduct.category}
-                          onChange={e => setNewProduct({...newProduct, category: e.target.value})}
+                          value={productForm.category}
+                          onChange={(e) => setProductForm({ ...productForm, category: e.target.value as Product['category'] })}
                         >
                           <option value="bridal">Bridal Accessories</option>
-                          <option value="groom">Groom's Accessories</option>
+                          <option value="groom">Groom&apos;s Accessories</option>
                           <option value="asoebi">Asoebi Accessories</option>
                           <option value="ankara-craft">Ankara Craft</option>
                         </select>
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-brand-plum/40 uppercase tracking-widest">Subcategory</label>
-                        <input 
+                        <input
                           className="w-full p-4 bg-brand-off-white rounded-2xl border-none focus:ring-2 focus:ring-brand-plum"
-                          value={newProduct.subcategory}
-                          onChange={e => setNewProduct({...newProduct, subcategory: e.target.value})}
+                          value={productForm.subcategory}
+                          onChange={(e) => setProductForm({ ...productForm, subcategory: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-brand-plum/40 uppercase tracking-widest">Stock Count</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="w-full p-4 bg-brand-off-white rounded-2xl border-none focus:ring-2 focus:ring-brand-plum"
+                          value={productForm.stockCount}
+                          onChange={(e) => setProductForm({ ...productForm, stockCount: Number(e.target.value) })}
                         />
                       </div>
                     </div>
+
                     <div className="space-y-4">
                       <label className="text-xs font-bold text-brand-plum/40 uppercase tracking-widest">Product Images (URLs)</label>
                       <div className="grid grid-cols-1 gap-3">
-                        {newProduct.images.map((img, idx) => (
-                          <input 
+                        {productForm.images.map((img, idx) => (
+                          <input
                             key={idx}
                             placeholder={`Image URL ${idx + 1}`}
                             className="w-full p-4 bg-brand-off-white rounded-2xl border-none focus:ring-2 focus:ring-brand-plum"
                             value={img}
-                            onChange={e => {
-                              const imgs = [...newProduct.images];
-                              imgs[idx] = e.target.value;
-                              setNewProduct({...newProduct, images: imgs});
+                            onChange={(e) => {
+                              const images = [...productForm.images];
+                              images[idx] = e.target.value;
+                              setProductForm({ ...productForm, images });
                             }}
                           />
                         ))}
                       </div>
                     </div>
+
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-brand-plum/40 uppercase tracking-widest">Video URL (Vimeo preferred)</label>
-                      <input 
+                      <input
                         placeholder="https://vimeo.com/..."
                         className="w-full p-4 bg-brand-off-white rounded-2xl border-none focus:ring-2 focus:ring-brand-plum"
-                        value={newProduct.videoUrl}
-                        onChange={e => setNewProduct({...newProduct, videoUrl: e.target.value})}
+                        value={productForm.videoUrl}
+                        onChange={(e) => setProductForm({ ...productForm, videoUrl: e.target.value })}
                       />
                     </div>
+
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-brand-plum/40 uppercase tracking-widest">Description</label>
-                      <textarea 
+                      <textarea
                         rows={3}
                         className="w-full p-4 bg-brand-off-white rounded-2xl border-none focus:ring-2 focus:ring-brand-plum"
-                        value={newProduct.description}
-                        onChange={e => setNewProduct({...newProduct, description: e.target.value})}
+                        value={productForm.description}
+                        onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                       />
                     </div>
+
                     <div className="flex gap-4 pt-4">
-                      <button type="button" onClick={() => setIsAdding(false)} className="flex-1 py-4 font-bold text-brand-plum/40">Cancel</button>
-                      <button type="submit" className="flex-1 btn-primary py-4">Save Product</button>
+                      <button type="button" onClick={closeProductModal} className="flex-1 py-4 font-bold text-brand-plum/40">Cancel</button>
+                      <button type="submit" className="flex-1 btn-primary py-4">
+                        {editingProductId ? 'Update Product' : 'Save Product'}
+                      </button>
                     </div>
                   </form>
                 </div>
@@ -504,9 +563,17 @@ export default function Dashboard() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="relative inline-block">
-                          <button 
+                          <button
+                            onClick={() => openEditProductModal(product)}
+                            className="p-2 text-brand-plum hover:bg-brand-off-white rounded-lg transition-colors"
+                            title="Edit product"
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button
                             onClick={() => handleDelete(product.id)}
                             className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete product"
                           >
                             <Trash2 size={18} />
                           </button>
@@ -515,14 +582,14 @@ export default function Dashboard() {
                             <div className="absolute bottom-full right-0 mb-2 w-48 bg-white p-3 rounded-xl shadow-2xl border border-red-100 z-50">
                               <p className="text-[10px] font-bold text-brand-plum mb-2">Confirm Delete?</p>
                               <div className="flex gap-2">
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); setDeletingId(null); }} 
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeletingId(null); }}
                                   className="flex-1 py-1 text-[10px] bg-gray-100 rounded font-bold text-gray-600"
                                 >
                                   No
                                 </button>
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); confirmDelete(product.id); }} 
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); confirmDelete(product.id); }}
                                   className="flex-1 py-1 text-[10px] bg-red-600 text-white rounded font-bold"
                                 >
                                   Yes
@@ -547,13 +614,14 @@ export default function Dashboard() {
             <p className="text-brand-plum/40">Real-time orders will appear here once customers start purchasing.</p>
           </div>
         )}
+
         {activeTab === 'notifications' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-brand-plum uppercase tracking-tight">Admin Feed</h2>
               <p className="text-brand-plum/40 text-xs font-bold uppercase tracking-widest">{unreadCount} Unread</p>
             </div>
-            
+
             <div className="grid grid-cols-1 gap-4">
               {notifications.length === 0 ? (
                 <div className="bg-white p-20 rounded-[2.5rem] text-center border border-brand-plum/5">
@@ -563,7 +631,7 @@ export default function Dashboard() {
                 </div>
               ) : (
                 notifications.map((notif) => (
-                  <div 
+                  <div
                     key={notif.id}
                     className={`bg-white p-6 rounded-3xl shadow-sm border ${notif.read ? 'border-brand-plum/5 opacity-70' : 'border-brand-gold ring-1 ring-brand-gold/20'} transition-all`}
                   >
@@ -589,7 +657,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                       {!notif.read && (
-                        <button 
+                        <button
                           onClick={() => notif.id && markAsRead(notif.id)}
                           className="text-[10px] font-bold text-brand-plum hover:text-brand-gold uppercase tracking-widest bg-brand-off-white px-3 py-1.5 rounded-lg"
                         >
@@ -598,8 +666,7 @@ export default function Dashboard() {
                       )}
                     </div>
                     <p className="text-brand-plum/70 text-sm mb-4 leading-relaxed">{notif.message}</p>
-                    
-                    {/* Raw Data Preview */}
+
                     <details className="group">
                       <summary className="text-[10px] font-bold text-brand-plum/40 uppercase tracking-widest cursor-pointer hover:text-brand-plum flex items-center gap-2">
                         View Raw Details <ArrowRight size={10} className="group-open:rotate-90 transition-transform" />

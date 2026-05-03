@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { auth } from '../firebase';
+import { auth, resolveAdminStatus } from '../firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Mail, Lock, LogIn, UserPlus, Info } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -15,18 +15,20 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/';
+  const from = location.state?.from?.pathname || null;
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        const isAdmin = await resolveAdminStatus(credential.user);
+        navigate(from || (isAdmin ? '/dashboard' : '/'), { replace: true });
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
+        navigate(from || '/', { replace: true });
       }
-      navigate(from, { replace: true });
     } catch (err: any) {
       if (err.code === 'auth/invalid-credentials' && isLogin) {
         setError('Invalid email or password. If you haven\'t created an account in this project yet, please use the "Sign Up" option below.');

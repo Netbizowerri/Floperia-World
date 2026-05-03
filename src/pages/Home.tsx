@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { motion } from 'motion/react';
 import { CATEGORIES, PRODUCTS } from '../data/mock';
 import { formatPrice } from '../lib/utils';
@@ -17,9 +17,10 @@ import {
   CalendarHeart,
   Database
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { useUserStore } from '../store/useUserStore';
-import { migrateData, checkIsAdmin } from '../firebase';
+import { fetchProducts, migrateData } from '../firebase';
 import useEmblaCarousel from 'embla-carousel-react';
 
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -31,10 +32,26 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   CalendarHeart: <CalendarHeart size={48} strokeWidth={1.2} className="drop-shadow-[2px_2px_0px_rgba(74,14,60,0.2)] drop-shadow-[4px_4px_0px_rgba(74,14,60,0.1)] drop-shadow-[6px_6px_10px_rgba(0,0,0,0.2)]" />
 };
 
+const getCreatedAtValue = (createdAt: any) => {
+  if (!createdAt) return 0;
+  if (typeof createdAt?.toMillis === 'function') return createdAt.toMillis();
+  if (typeof createdAt === 'string') {
+    const parsed = Date.parse(createdAt);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (typeof createdAt === 'object' && typeof createdAt.seconds === 'number') {
+    return createdAt.seconds * 1000;
+  }
+  return 0;
+};
+
 export default function Home() {
   const { toggleWishlist, isInWishlist } = useWishlistStore();
-  const { user } = useUserStore();
-  const isAdmin = checkIsAdmin(user);
+  const { isAdmin } = useUserStore();
+  const { data: liveProducts = [] } = useQuery({
+    queryKey: ['products'],
+    queryFn: fetchProducts,
+  });
 
   const handleMigrate = async () => {
     if (window.confirm('Do you want to sync all mock products to the live database?')) {
@@ -84,8 +101,14 @@ export default function Home() {
     if (newArrivalsApi) newArrivalsApi.scrollNext();
   }, [newArrivalsApi]);
 
-  // Latest 10 products for New Arrivals
-  const newArrivals = [...PRODUCTS].reverse().slice(0, 10);
+  const newArrivalsSource = liveProducts.length > 0
+    ? liveProducts.filter((product: any) => product.active !== false)
+    : PRODUCTS;
+
+  // Latest 10 live products for New Arrivals
+  const newArrivals = [...newArrivalsSource]
+    .sort((a: any, b: any) => getCreatedAtValue(b.createdAt) - getCreatedAtValue(a.createdAt))
+    .slice(0, 10);
   
   // Featured products (highest prices)
   const featuredProducts = [...PRODUCTS].sort((a, b) => b.price - a.price).slice(0, 6);

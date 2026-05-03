@@ -1,3 +1,4 @@
+import dotenv from "dotenv";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -6,6 +7,9 @@ import cors from "cors";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+dotenv.config();
+dotenv.config({ path: path.join(process.cwd(), ".env.production.example"), override: false });
 
 async function startServer() {
   const app = express();
@@ -17,9 +21,10 @@ async function startServer() {
   app.post("/api/send-email", async (req, res) => {
     console.log("[SERVER] POST /api/send-email hit");
     const { to, subject, html } = req.body;
+    const adminEmail = process.env.ADMIN_EMAIL || "service.floperia@gmail.com";
     
-    if (!to || !subject || !html) {
-      console.error("[SERVER] Missing required fields:", { to, subject, hasHtml: !!html });
+    if (!subject || !html) {
+      console.error("[SERVER] Missing required fields:", { subject, hasHtml: !!html });
       return res.status(200).json({ success: false, error: "Missing required fields" });
     }
 
@@ -39,8 +44,8 @@ async function startServer() {
           Authorization: `Bearer ${RESEND_API_KEY}`,
         },
         body: JSON.stringify({
-          from: "onboarding@resend.dev",
-          to: typeof to === 'string' ? [to] : to,
+          from: "Floperia Classic World <onboarding@resend.dev>",
+          to: typeof to === 'string' ? [to] : Array.isArray(to) && to.length > 0 ? to : [adminEmail],
           subject: subject,
           html: html,
         }),
@@ -97,7 +102,13 @@ async function startServer() {
         }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = responseText ? JSON.parse(responseText) : { rawResponse: "" };
+      } catch {
+        data = { rawResponse: responseText };
+      }
       console.log("[SERVER] Privyr API Response:", data);
 
       if (response.ok) {

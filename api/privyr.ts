@@ -33,7 +33,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }),
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data: any;
+    try {
+      data = responseText ? JSON.parse(responseText) : { rawResponse: '' };
+    } catch {
+      data = { rawResponse: responseText };
+    }
 
     if (response.ok) {
       return res.status(200).json({ success: true, data });

@@ -86,12 +86,15 @@ export default function Checkout() {
     }
 
     // Notify admin via Firestore + Privyr CRM webhook
-    await createNotification(
+    const notificationResult = await createNotification(
       'order',
       `New Order: ${newOrderId}`,
       `Order ${newOrderId} placed by ${deliveryDetails?.fullName} for ₦${(getTotal() + 2500).toLocaleString()}. Payment: ${paymentMethod}.`,
       { order, deliveryDetails }
     );
+    if (!notificationResult.privyrSuccess) {
+      console.warn('[Checkout] Privyr webhook did not confirm order notification delivery.');
+    }
 
     addOrder(order);
     clearCart();

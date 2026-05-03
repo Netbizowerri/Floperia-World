@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, Star, Heart } from 'lucide-react';
-import { fetchProducts, fetchCategories, migrateData, checkIsAdmin } from '../firebase';
+import { fetchProducts, fetchCategories, migrateData } from '../firebase';
 import { formatPrice, cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { useWishlistStore } from '../store/useWishlistStore';
@@ -14,8 +14,7 @@ export default function Shop() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const queryClient = useQueryClient();
-  const { user } = useUserStore();
-  const isAdmin = checkIsAdmin(user);
+  const { isAdmin } = useUserStore();
   
   const activeCategory = searchParams.get('category') || 'all';
   const { toggleWishlist, isInWishlist } = useWishlistStore();

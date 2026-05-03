@@ -8,7 +8,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import ScrollToTop from './components/ScrollToTop';
-import { auth } from './firebase';
+import { auth, resolveAdminStatus } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useUserStore } from './store/useUserStore';
 import { useCartStore } from './store/useCartStore';
@@ -35,34 +35,51 @@ const VideoGallery = React.lazy(() => import('./pages/VideoGallery'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 export default function App() {
-  const { setUser, setLoading } = useUserStore();
+  const { setUser, setIsAdmin, setLoading } = useUserStore();
   const { setItems: setCartItems } = useCartStore();
   const { setItems: setWishlistItems } = useWishlistStore();
 
   useEffect(() => {
+    let isMounted = true;
     let unsubscribeCart: () => void = () => {};
     let unsubscribeWishlist: () => void = () => {};
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setLoading(true);
       setUser(user);
-      setLoading(false);
+
+      unsubscribeCart();
+      unsubscribeWishlist();
 
       if (user) {
-        // Subscribe to Firestore sync
         unsubscribeCart = subscribeToFirestoreStore('carts', user.uid, setCartItems);
         unsubscribeWishlist = subscribeToFirestoreStore('wishlists', user.uid, setWishlistItems);
-      } else {
-        unsubscribeCart();
-        unsubscribeWishlist();
+        resolveAdminStatus(user)
+          .then((isAdmin) => {
+            if (!isMounted) return;
+            setIsAdmin(isAdmin);
+            setLoading(false);
+          })
+          .catch((error) => {
+            console.error('Failed to resolve admin status:', error);
+            if (!isMounted) return;
+            setIsAdmin(false);
+            setLoading(false);
+          });
+        return;
       }
+
+      setIsAdmin(false);
+      setLoading(false);
     });
 
     return () => {
+      isMounted = false;
       unsubscribeAuth();
       unsubscribeCart();
       unsubscribeWishlist();
     };
-  }, [setUser, setLoading, setCartItems, setWishlistItems]);
+  }, [setUser, setIsAdmin, setLoading, setCartItems, setWishlistItems]);
 
   return (
     <BrowserRouter>
